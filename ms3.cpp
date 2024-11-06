@@ -61,7 +61,7 @@ void sort() {
 #ifndef NDEBUG
   printf("Sorted:\n");
   printf("-------------------------------------------\n");
-  for (int i=0; i<64; ++i) {
+  for (int i=0; i<CAP*8; ++i) {
     if (data1[i]!=-1) {
       printf("%d=%lu ", i, data1[i]);
     }

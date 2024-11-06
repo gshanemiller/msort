@@ -87,7 +87,7 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "jmp done%=;"                       // all done!
 
       "branch3%=:;"                       // branch 3
-      "vmovq %%r11, %%xmm4;"              // store rhs[0]
+      "vmovq %%r10, %%xmm4;"              // store rhs[0]
       "pslldq $8, %%xmm4;"
       "vpaddd %%xmm4, %%xmm2, %%xmm2;"    // combine 4+2 in 2
 
@@ -136,7 +136,7 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "vmovq %%r8, %%xmm3;"               // store lhs[0]
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm2, %%xmm3;"    // combine 4+3 in 3
+      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+3 in 3
 
       "done%=:;"                          // store sorted data
       "mov %2, %%rdx;"                    // dst
@@ -200,7 +200,7 @@ void sort() {
 #ifndef NDEBUG
   printf("Sorted:\n");
   printf("-------------------------------------------\n");
-  for (int i=0; i<64; ++i) {
+  for (int i=0; i<CAP*8; ++i) {
     if (data1[i]!=-1) {
       printf("%d=%lu ", i, data1[i]);
     }
