@@ -1,10 +1,10 @@
 all:
-	gcc -O3 -g ms.cpp  -o ms
-	gcc -O3 -g ms1.cpp -o ms1
-	gcc -O3 -g ms2.cpp -o ms2
-	gcc -O3 -g ms3.cpp -o ms3
-	gcc -O3 -g -mavx2 ms4.cpp -o ms4
-	gcc -O3 -g -mavx2 -mavx512f ms5.cpp -o ms5
+	gcc -DNDEBUG -O3 -g ms.cpp  -o ms
+	gcc -DNDEBUG -O3 -g ms1.cpp -o ms1
+	gcc -DNDEBUG -O3 -g ms2.cpp -o ms2
+	gcc -DNDEBUG -O3 -g ms3.cpp -o ms3
+	gcc -DNDEBUG -O3 -g -mavx2 ms4.cpp -o ms4
+	gcc -DNDEBUG -O3 -g -mavx2 -mavx512f ms5.cpp -o ms5
 	gcc -O0 -g ms.cpp  -o ms.dbg
 	gcc -O0 -g ms1.cpp -o ms1.dbg
 	gcc -O0 -g ms2.cpp -o ms2.dbg
