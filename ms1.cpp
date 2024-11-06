@@ -4,14 +4,14 @@
 
 const int CAP = 2;
 
-int d0[4] = {1, 2, 3, 4};
-int d1[4] = {0, 0, 0, 0};
-int d2[4] = {10, 10, 10, 10};
-int d3[4] = {9,9,10,10};
-int d4[4] = {1,1,1,1};
-int d5[4] = {3,3,3,3};
-int d6[4] = {6,9,11,12};
-int d7[4] = {2,4,5,7};
+int32_t d0[4] = {2,4,5,7};                                                                                            
+int32_t d1[4] = {0,3,6,9};                                                                                            
+int32_t d2[4] = {1,2,3,4};                                                                                            
+int32_t d3[4] = {0,0,0,0};                                                                                            
+int32_t d4[4] = {10,10,10,10};                                                                                        
+int32_t d5[4] = {9,9,10,10};                                                                                          
+int32_t d6[4] = {1,1,1,1};                                                                                            
+int32_t d7[4] = {3,3,3,3};  
 
 int *dataIn[8] = {d0,d1,d2,d3, d4,d5,d6,d7};
 
@@ -42,24 +42,24 @@ void merge(const int size, int *a, int *b, int *c) {
 }
 
 void sort() {
-  // merge d0,d1 into data+0    using 16  end 16
-  merge(CAP, data0+0, data0+8, data1);
-  // merge d2,d3 into data+16   using 16  end 32
-  merge(CAP, data0+16, data0+24, data1+16);
-  // merge d4,d5 into data+32   using 16  end 48
-  merge(CAP, data0+32, data0+40, data1+32);
-  // merge d5,d6 into data+48   using 16  end 64
-  merge(CAP, data0+48, data0+48, data1+48);
+  // merge d0,d1 output 4 elems                                                                                         
+  merge(CAP, data0+0, data0+8,   data1);                                                                                
+  // merge d2,d3 output 4 elems                                                                                         
+  merge(CAP, data0+16, data0+24, data1+(CAP<<1));                                                                       
+  // merge d4,d5 output 4 elems                                                                                         
+  merge(CAP, data0+32, data0+40, data1+(CAP<<2));                                                                       
+  // merge d5,d6 output 4 elems                                                                                         
+  merge(CAP, data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));                                                              
+                                                                                                                        
+  // merge d0d1,d2d3 output 8 elems                                                                                     
+  merge(CAP<<1, data1, data1+(CAP<<1), data0);                                                                          
+  // merge d4d5,d6d7 outout 8 elems                                                                                     
+  merge(CAP<<1, data1+(CAP<<2), data1+(CAP<<1)+(CAP<<2), data0+8);                                                      
+                                                                                                                        
+  // d0d1d2d3 + d4d5d6d7 output 16 elems                                                                                
+  merge(CAP<<2, data0, data0+8, data1);  
 
-  // merge d0d1+0 d2d3+16 into dataIn+0 using 32
-  merge(CAP<<1, data1+0, data1+16, data0);
-  // merge d4d5+32 d6d7+48 into dataIn+32 using 32
-  merge(CAP<<1, data1+32, data1+48, data0+32);
-
-  // final merge
-  merge(CAP<<2, data0+0, data0+32, data1);
-
-/*
+#ifndef NDEBUG
   printf("Sorted:\n");
   printf("-------------------------------------------\n");
   for (int i=0; i<64; ++i) {
@@ -68,7 +68,7 @@ void sort() {
     }
   }
   printf("\n");
-*/
+#endif
 }
 
 void prepare(int *d0, int *d1, int *d2, int *d3,
@@ -117,7 +117,7 @@ void prepare(int *d0, int *d1, int *d2, int *d3,
     data0[b+i] = d7[i];
   }
 
-/*
+#ifndef NDEBUG
   printf("Unsorted:\n");
   printf("-------------------------------------------\n");
   for (int i=0; i<64; ++i) {
@@ -126,7 +126,7 @@ void prepare(int *d0, int *d1, int *d2, int *d3,
     }
   }
   printf("\n\n");
-*/
+#endif
 }
 
 int main() {
