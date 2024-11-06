@@ -46,6 +46,15 @@ run:
 	@ taskset -c 2 ./ms4
 	@ taskset -c 2 ./ms4
 	@ taskset -c 2 ./ms4
+	@ echo "ms5"
+	@ echo "==============================="
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
+	@ taskset -c 2 ./ms5
 
 runlog: committed
 	@ date >> log
@@ -79,5 +88,14 @@ runlog: committed
 	@ taskset -c 2 ./ms4 >> log
 	@ taskset -c 2 ./ms4 >> log
 	@ taskset -c 2 ./ms4 >> log
+	@ echo "ms5" >> log
+	@ echo "===============================" >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
+	@ taskset -c 2 ./ms5 >> log
 	@ echo >> log
 	@ echo >> log
