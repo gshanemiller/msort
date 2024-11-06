@@ -1,19 +1,15 @@
 all:
-	gcc -DNDEBUG -O3 -g ms.cpp  -o ms
 	gcc -DNDEBUG -O3 -g ms1.cpp -o ms1
-	gcc -DNDEBUG -O3 -g ms2.cpp -o ms2
 	gcc -DNDEBUG -O3 -g ms3.cpp -o ms3
-	gcc -DNDEBUG -O3 -g -mavx2 ms4.cpp -o ms4
+	gcc -DNDEBUG -O3 -g -mavx -mavx2 ms4.cpp -o ms4
 	gcc -DNDEBUG -O3 -g -mavx2 -mavx512f ms5.cpp -o ms5
-	gcc -O0 -g ms.cpp  -o ms.dbg
 	gcc -O0 -g ms1.cpp -o ms1.dbg
-	gcc -O0 -g ms2.cpp -o ms2.dbg
 	gcc -O0 -g ms3.cpp -o ms3.dbg
-	gcc -O0 -g -mavx2 ms4.cpp -o ms4.dbg
+	gcc -O0 -g -mavx -mavx2 ms4.cpp -o ms4.dbg
 	gcc -O0 -g -mavx2 -mavx512f ms5.cpp -o ms5.dbg
 
 clean:
-	rm -f ms ms1 ms2 ms3 ms4 ms.dbg ms1.dbg ms2.dbg ms3.dbg ms4.dbg ms5 ms5.dbg
+	rm -f ms1 ms3 ms4 ms5 ms1.dbg ms3.dbg ms4.dbg ms5.dbg
 
 committed:
 	git status | grep "nothing to commit" 1>/dev/null
