@@ -79,31 +79,31 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "jge branch3%=;"
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm2, %%xmm2;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
       "vmovq %%r10, %%xmm3;"              // store rhs[0]
       "vmovq %%r11, %%xmm4;"              // store rhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+3 in 3
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
       "jmp done%=;"                       // all done!
 
       "branch3%=:;"                       // branch 3
       "vmovq %%r10, %%xmm4;"              // store rhs[0]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm2, %%xmm2;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
 
       "cmp %%r11d, %%r9d;"                // cmp lhs[1], rhs[1]
       "jge endbranch3%=;"
       "vmovq %%r9, %%xmm3;"               // store lhs[1]
       "vmovq %%r11, %%xmm4;"              // store rhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+2 in 2
       "jmp done%=;"                       // all done!
 
       "endbranch3%=:;"                    // branch 3 else part
       "vmovq %%r11, %%xmm3;"              // store rhs[1]
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+2 in 2
       "jmp done%=;"                       // all done!
 
       "branch4%=:;"                       // branch 4
@@ -112,7 +112,7 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "jge endbranch4%=;"
       "vmovq %%r8, %%xmm4;"               // store lhs[0]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm2, %%xmm2;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
 
       "branch5%=:;"                       // branch 5
       "cmp %%r11d, %%r9d;"                // compare lhs[1], rhs[1]
@@ -120,23 +120,23 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "vmovq %%r9, %%xmm3;"               // store lhs[1]
       "vmovq %%r11, %%xmm4;"              // store rhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+3 in 3
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
       
       "endbranch5%=:;"                    // else part of branch 5
       "vmovq %%r11, %%xmm3;"              // store rhs[1]
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+3 in 3
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
       "jmp done%=;"                       // all done!
 
       "endbranch4%=:;"                    // else part of branch 4
       "vmovq %%r11, %%xmm4;"              // store rhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm2, %%xmm2;"    // combine 4+2 in 2
+      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
       "vmovq %%r8, %%xmm3;"               // store lhs[0]
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
       "pslldq $8, %%xmm4;"
-      "vpaddd %%xmm4, %%xmm3, %%xmm3;"    // combine 4+3 in 3
+      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
 
       "done%=:;"                          // store sorted data
       "mov %2, %%rdx;"                    // dst
