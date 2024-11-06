@@ -14,7 +14,7 @@ clean:
 committed:
 	git status | grep "nothing to commit" 1>/dev/null
 
-run: 
+run:
 	@ echo "ms1"
 	@ echo "==============================="
 	@ taskset -c 2 ./ms1

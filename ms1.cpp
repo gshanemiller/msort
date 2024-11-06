@@ -4,14 +4,14 @@
 
 const int CAP = 2;
 
-int32_t d0[4] = {2,4,5,7};                                                                                            
-int32_t d1[4] = {0,3,6,9};                                                                                            
-int32_t d2[4] = {1,2,3,4};                                                                                            
-int32_t d3[4] = {0,0,0,0};                                                                                            
-int32_t d4[4] = {10,10,10,10};                                                                                        
-int32_t d5[4] = {9,9,10,10};                                                                                          
-int32_t d6[4] = {1,1,1,1};                                                                                            
-int32_t d7[4] = {3,3,3,3};  
+int32_t d0[4] = {2,4,5,7};
+int32_t d1[4] = {0,3,6,9};
+int32_t d2[4] = {1,2,3,4};
+int32_t d3[4] = {0,0,0,0};
+int32_t d4[4] = {10,10,10,10};
+int32_t d5[4] = {9,9,10,10};
+int32_t d6[4] = {1,1,1,1};
+int32_t d7[4] = {3,3,3,3};
 
 int *dataIn[8] = {d0,d1,d2,d3, d4,d5,d6,d7};
 
@@ -25,39 +25,39 @@ void merge(const int size, int *a, int *b, int *c) {
   int j=0;
   int writeIdx = 0;
 
-  while (i<size && j<size) { 
+  while (i<size && j<size) {
     if (b[j]<a[i]) {
-      c[writeIdx++] = b[j++]; 
+      c[writeIdx++] = b[j++];
     } else {
-      c[writeIdx++] = a[i++]; 
+      c[writeIdx++] = a[i++];
     }
   }
 
   while (i<size) {
-    c[writeIdx++] = a[i++]; 
+    c[writeIdx++] = a[i++];
   }
   while (j<size) {
-    c[writeIdx++] = b[j++]; 
+    c[writeIdx++] = b[j++];
   }
 }
 
 void sort() {
-  // merge d0,d1 output 4 elems                                                                                         
-  merge(CAP, data0+0, data0+8,   data1);                                                                                
-  // merge d2,d3 output 4 elems                                                                                         
-  merge(CAP, data0+16, data0+24, data1+(CAP<<1));                                                                       
-  // merge d4,d5 output 4 elems                                                                                         
-  merge(CAP, data0+32, data0+40, data1+(CAP<<2));                                                                       
-  // merge d5,d6 output 4 elems                                                                                         
-  merge(CAP, data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));                                                              
-                                                                                                                        
-  // merge d0d1,d2d3 output 8 elems                                                                                     
-  merge(CAP<<1, data1, data1+(CAP<<1), data0);                                                                          
-  // merge d4d5,d6d7 outout 8 elems                                                                                     
-  merge(CAP<<1, data1+(CAP<<2), data1+(CAP<<1)+(CAP<<2), data0+8);                                                      
-                                                                                                                        
-  // d0d1d2d3 + d4d5d6d7 output 16 elems                                                                                
-  merge(CAP<<2, data0, data0+8, data1);  
+  // merge d0,d1 output 4 elems
+  merge(CAP, data0+0, data0+8,   data1);
+  // merge d2,d3 output 4 elems
+  merge(CAP, data0+16, data0+24, data1+(CAP<<1));
+  // merge d4,d5 output 4 elems
+  merge(CAP, data0+32, data0+40, data1+(CAP<<2));
+  // merge d5,d6 output 4 elems
+  merge(CAP, data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));
+
+  // merge d0d1,d2d3 output 8 elems
+  merge(CAP<<1, data1, data1+(CAP<<1), data0);
+  // merge d4d5,d6d7 outout 8 elems
+  merge(CAP<<1, data1+(CAP<<2), data1+(CAP<<1)+(CAP<<2), data0+8);
+
+  // d0d1d2d3 + d4d5d6d7 output 16 elems
+  merge(CAP<<2, data0, data0+8, data1);
 
 #ifndef NDEBUG
   printf("Sorted:\n");
@@ -76,7 +76,7 @@ void prepare(int *d0, int *d1, int *d2, int *d3,
   for (int i=0; i<64; ++i) {
     data0[i]=-1;
   }
-  
+
   int b = 0;
   for (int i=0; i<CAP; ++i) {
     data0[b+i] = d0[i];

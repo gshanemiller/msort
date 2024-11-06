@@ -63,10 +63,10 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "mov %1, %%rdx;"
       "vmovdqa (%%rdx), %%xmm1;"
       "vmovq %%xmm0, %%r8;"               // lhs[0]
-      "psrldq $8, %%xmm0;" 
+      "psrldq $8, %%xmm0;"
       "vmovq %%xmm0, %%r9;"               // lhs[1]
       "vmovq %%xmm1, %%r10;"              // rhs[0]
-      "psrldq $8, %%xmm1;" 
+      "psrldq $8, %%xmm1;"
       "vmovq %%xmm1, %%r11;"              // rhs[1]
 
       "branch1%=:;"                       // branch 1
@@ -121,7 +121,7 @@ void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "vmovq %%r11, %%xmm4;"              // store rhs[1]
       "pslldq $8, %%xmm4;"
       "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
-      
+
       "endbranch5%=:;"                    // else part of branch 5
       "vmovq %%r11, %%xmm3;"              // store rhs[1]
       "vmovq %%r9, %%xmm4;"               // store lhs[1]
@@ -214,7 +214,7 @@ void prepare(u_int64_t *d0, u_int64_t *d1, u_int64_t *d2, u_int64_t *d3,
   for (int i=0; i<64; ++i) {
     data0[i]=-1;
   }
-  
+
   int b = 0;
   for (int i=0; i<CAP; ++i) {
     data0[b+i] = d0[i];
