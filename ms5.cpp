@@ -84,15 +84,16 @@ void printuint64(const SIMD1024Register& data) {
 
 const int CAP = 2;
 
-u_int64_t d0[4] = {1, 2, 3, 4};
-u_int64_t d1[4] = {0, 0, 0, 0};
-u_int64_t d2[4] = {10, 10, 10, 10};
-u_int64_t d3[4] = {9,9,10,10};
-u_int64_t d4[4] = {1,1,1,1};
-u_int64_t d5[4] = {3,3,3,3};
-u_int64_t d6[4] = {6,9,11,12};
-u_int64_t d7[4] = {2,4,5,7};
+u_int64_t d0[4] = {2,4,5,7};
+u_int64_t d1[4] = {0,3,6,9};
+u_int64_t d2[4] = {1,2,3,4};
+u_int64_t d3[4] = {0,0,0,0};
+u_int64_t d4[4] = {10,10,10,10};
+u_int64_t d5[4] = {9,9,10,10};
+u_int64_t d6[4] = {1,1,1,1};
+u_int64_t d7[4] = {3,3,3,3};
 
+alignas(64)
 u_int64_t *dataIn[8] = {d0,d1,d2,d3, d4,d5,d6,d7};
 
 alignas(64)
@@ -105,8 +106,9 @@ void merge(const int size, u_int64_t *a, u_int64_t *b, u_int64_t *c) {
   const u_int64_t *aend = a+size;
   const u_int64_t *bend = b+size;
 
+  #pragma GCC unroll 4
   while (a!=aend && b!=bend) {
-    if (*b<*a) {
+    if (((*b)&(0xffffffffUL))<((*a)&0xffffffffUL)) {
       *c++ = *b++;
     } else {
       *c++ = *a++;
@@ -130,8 +132,9 @@ void mergeSimd(const int size, u_int64_t *a, u_int64_t *b, u_int64_t *c) {
   int32_t bidx = 0;
   int32_t cidx = 0;
 
+  #pragma GCC unroll 4
   while (aidx!=size && bidx!=size) {
-    if (rhs.d_int32[1<<aidx]<lhs.d_int32[1<<bidx]) {
+    if (rhs.d_int32[bidx<<1]<lhs.d_int32[aidx<<1]) {
       dst.d_int64[cidx++] = rhs.d_int64[bidx++];
     } else {
       dst.d_int64[cidx++] = lhs.d_int64[aidx++];
@@ -150,91 +153,92 @@ void mergeSimd(const int size, u_int64_t *a, u_int64_t *b, u_int64_t *c) {
 }
 
 void sort() {
-  // merge d0,d1 into data+0    using 16  end 16
-  merge(2, data0+0, data0+8, data1);
-  // merge d2,d3 into data+16   using 16  end 32
-  merge(2, data0+16, data0+24, data1+16);
-  // merge d4,d5 into data+32   using 16  end 48
-  merge(2, data0+32, data0+40, data1+32);
-  // merge d5,d6 into data+48   using 16  end 64
-  merge(2, data0+48, data0+48, data1+48);
+  // merge d0,d1 output 4 elems
+  merge(CAP, data0+0, data0+8,   data1);
+  // merge d2,d3 output 4 elems
+  merge(CAP, data0+16, data0+24, data1+(CAP<<1));
+  // merge d4,d5 output 4 elems
+  merge(CAP, data0+32, data0+40, data1+(CAP<<2));
+  // merge d5,d6 output 4 elems
+  merge(CAP, data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));
 
-  // merge d0d1+0 d2d3+16 into dataIn+0 using 32
-  merge(CAP<<1, data1+0, data1+16, data0);
-  // merge d4d5+32 d6d7+48 into dataIn+32 using 32
-  merge(CAP<<1, data1+32, data1+48, data0+32);
+  // merge d0d1,d2d3 output 8 elems
+  merge(CAP<<1, data1, data1+(CAP<<1), data0);
+  // merge d4d5,d6d7 outout 8 elems
+  merge(CAP<<1, data1+(CAP<<2), data1+(CAP<<1)+(CAP<<2), data0+8);
 
-  // final merge
-  mergeSimd(CAP<<2, data0+0, data0+32, data1);
+  // d0d1d2d3 + d4d5d6d7 output 16 elems
+  mergeSimd(CAP<<2, data0, data0+8, data1);
 
-/*
+#ifndef NDEBUG
   printf("Sorted:\n");
   printf("-------------------------------------------\n");
   for (int i=0; i<64; ++i) {
     if (data1[i]!=-1) {
-      printf("%d=%d ", i, data1[i]);
+      printf("%d=%u/%u ", i, (u_int32_t)data1[i], (u_int32_t)(data1[i]>>32));
     }
   }
   printf("\n");
-*/
+#endif
 }
 
 void prepare(u_int64_t *d0, u_int64_t *d1, u_int64_t *d2, u_int64_t *d3,
              u_int64_t *d4, u_int64_t *d5, u_int64_t *d6, u_int64_t *d7) {
-  for (int i=0; i<64; ++i) {
+  u_int64_t n=0x13432;
+  for (int i=0; i<64; ++i, ++n) {
     data0[i]=-1;
   }
   
   int b = 0;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d0[i];
+    data0[b+i] = d0[i]|(n++<<32);
   }
 
   b = 8;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d1[i];
+    data0[b+i] = d1[i]|(n++<<32);
   }
 
   b = 16;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d2[i];
+    data0[b+i] = d2[i]|(n++<<32);
   }
 
   b = 24;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d3[i];
+    data0[b+i] = d3[i]|(n++<<32);
   }
 
   b = 32;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d4[i];
+    data0[b+i] = d4[i]|(n++<<32);
   }
 
   b = 40;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d5[i];
+    data0[b+i] = d5[i]|(n++<<32);
   }
 
   b = 48;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d6[i];
+    data0[b+i] = d6[i]|(n++<<32);
   }
 
   b = 56;
   for (int i=0; i<CAP; ++i) {
-    data0[b+i] = d7[i];
+    data0[b+i] = d7[i]|(n++<<32);
   }
 
-/*
+#ifndef NDEBUG
   printf("Unsorted:\n");
   printf("-------------------------------------------\n");
   for (int i=0; i<64; ++i) {
     if (data0[i]!=-1) {
-      printf("%d=%d ", i, data0[i]);
+      printf("%d=%u/%u ", i, (u_int32_t)data0[i], (u_int32_t)(data0[i]>>32));
     }
   }
   printf("\n\n");
-*/
+#endif
 }
 
 int main() {
