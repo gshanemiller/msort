@@ -1,60 +1,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <sys/types.h>
-#include <immintrin.h>
-
-typedef int64_t   VecInt64x2 __attribute__ ((vector_size(16)));
-typedef int32_t   VecInt32x4 __attribute__ ((vector_size(16)));
-typedef u_int64_t VecUInt64x2 __attribute__ ((vector_size(16)));
-typedef u_int32_t VecUInt32x4 __attribute__ ((vector_size(16)));
-
-union SIMD128Register {
-  __m128i     d_reg;
-  VecInt64x2  d_int64;
-  VecInt32x4  d_int32;
-  VecUInt64x2 d_uint64;
-  VecUInt32x4 d_uint32;
-};
-
-void printuint64(const SIMD128Register& data) {
-  printf("data: [%lu %lu]\n", data.d_uint64[0], data.d_uint64[1]);
-}
-
-typedef int64_t   VecInt64x4  __attribute__ ((vector_size(32)));
-typedef int32_t   VecInt32x8  __attribute__ ((vector_size(32)));
-typedef u_int64_t VecUInt64x4 __attribute__ ((vector_size(32)));
-typedef u_int32_t VecUInt32x8 __attribute__ ((vector_size(32)));
-
-union SIMD256Register {
-  __m256i     d_reg;
-  VecInt64x4  d_int64;
-  VecInt32x8  d_int32;
-  VecUInt64x4 d_uint64;
-  VecUInt32x8 d_uint32;
-};
-
-void printuint64(const SIMD256Register& data) {
-  printf("data: [%lu %lu %lu %lu]\n", data.d_uint64[0], data.d_uint64[1], data.d_uint64[2], data.d_uint64[3]);
-}
-
-typedef int64_t   VecInt64x8    __attribute__ ((vector_size(64)));
-typedef int32_t   VecInt32x16   __attribute__ ((vector_size(64)));
-typedef u_int64_t VecUInt64x8   __attribute__ ((vector_size(64)));
-typedef u_int32_t VecUInt32x16  __attribute__ ((vector_size(64)));
-
-union SIMD512Register {
-  __m512i       d_reg;
-  VecInt64x8    d_int64;
-  VecInt32x16   d_int32;
-  VecUInt64x8   d_uint64;
-  VecUInt32x16  d_uint32;
-};
-
-void printuint64(const SIMD512Register& data) {
-  printf("data: [%lu %lu %lu %lu   %lu %lu %lu %lu]\n",
-    data.d_uint64[0], data.d_uint64[1], data.d_uint64[2], data.d_uint64[3],
-    data.d_uint64[4], data.d_uint64[5], data.d_uint64[6], data.d_uint64[7]);
-}
 
 const int CAP = 2;
 
@@ -78,396 +24,81 @@ u_int64_t sorts=0;
 
 inline
 void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-  asm("mov %0, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm16;"
-      "mov %1, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm17;"
-      "vmovq %%zmm16, %%r8;"               // lhs[0]
-      "psrldq $8, %%zmm16;"
-      "vmovq %%zmm16, %%r9;"               // lhs[1]
-      "vmovq %%zmm17, %%r10;"              // rhs[0]
-      "psrldq $8, %%zmm17;"
-      "vmovq %%zmm17, %%r11;"              // rhs[1]
+// ms5.cpp:27: Error: operand type mismatch for `vmovq'
 
-      "branch1%=:;"                       // branch 1
-      "cmp %%r10d, %%r8d;"                // cmp lhs[0], rhs[0]
-      "jge branch4%=;"
-      "vmovq %%r8, %%zmm19;"               // store lhs[0]
+// zmm16, zmm17, zmm27
+// ======================================                                                                                
+// 2+2 -> 4 zmm19                                                                                                        
+// 2+2 -> 4 zmm20                                                                                                        
+// 2+2 -> 4 zmm21                                                                                                        
+// 2+2 -> 4 zmm22                                                                                                        
+// 
+// 4+4 -> 8 zmm19+zmm20 -> zmm23                                                                                         
+// 4+4 -> 8 zmm21+zmm22 -> zmm24                                                                                         
+// 8+8 -> 16 zmm23+zmm24 -> zmm25+zmm26  
+  asm("mov %0, %%r8;"                             // load lhs addr
+      "vmovdqa64 (%%r8), %%zmm16;"                // load *lhs
+      "mov %1, %%r8;"                             // load rhs addr
+      "vmovdqa64 (%%r8), %%zmm17;"                // load *rhs
+      "mov $1, %%r8;"                             // mov 1 into r8
+      "vpbroadcastq %%r8, %%zmm27;"               // set qwords in zmm27 all 1
+      "mov $3, %%r8d;"                            // mov 3 into r8d - OR mask bottom two int32s
+      "kmovw %%r8d, %%k2;"                        // set k2 to 3
+      "mov $255, %%r8d;"                          // mov 255 to r8d - shift right write mask
+      "kmovw %%r8d, %%k3;"                        // set k3 to 255
+      "mov $2, %%r8b;"                            // load lhs count
+      "mov $2, %%r9b;"                            // load rhs count
+      "xor %%r9, %%r9;"                           // zero r9 holding dst count
+      "vpxorq %%zmm18, %%zmm18, %%zmm18;"         // zero zmm18 (merge result goes here)
 
-      "branch2%=:;"                       // branch 2
-      "cmp %%r10d, %%r9d;"                // cmp lhs[1], rhs[0]
-      "jge branch3%=;"
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
-      "vmovq %%r10, %%zmm19;"              // store rhs[0]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
+      "loop1%=:;"                                 // loop 1
 
-      "branch3%=:;"                       // branch 3
-      "vmovq %%r10, %%zmm18;"              // store rhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
+      "vpcmpd $5,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) < zmm16 (lhs)?
+      "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
+      "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
+      "cmp $1, %%r10d;"                           // is rb10==1?
+      "je rhsless%=;"                             // rhs less (otherwise lhs less)
 
-      "cmp %%r11d, %%r9d;"                // cmp lhs[1], rhs[1]
-      "jge endbranch3%=;"
-      "vmovq %%r9, %%zmm19;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "endbranch3%=:;"                    // branch 3 else part
-      "vmovq %%r11, %%zmm19;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "branch4%=:;"                       // branch 4
-      "vmovq %%r10, %%zmm19;"              // store rhs[0]
-      "cmp %%r11d, %%r8d;"                // compare lhs[0], rhs[1]
-      "jge endbranch4%=;"
-      "vmovq %%r8, %%zmm18;"               // store lhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
-
-      "branch5%=:;"                       // branch 5
-      "cmp %%r11d, %%r9d;"                // compare lhs[1], rhs[1]
-      "jge endbranch5%=;"
-      "vmovq %%r9, %%zmm19;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+3 in 3
-
-      "endbranch5%=:;"                    // else part of branch 5
-      "vmovq %%r11, %%zmm19;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "endbranch4%=:;"                    // else part of branch 4
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+2 in 2
-      "vmovq %%r8, %%zmm19;"               // store lhs[0]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm19, %%zmm19;"      // combine 4+3 in 3
-
-      "done%=:;"                          // store sorted data
-      "mov %2, %%rdx;"                    // dst
-      "vmovdqa %%zmm19, (%%rdx);"          // copy xmm2 to *dst
-      "add $16, %%rdx;"                   // advance 16 bytes
-      "vmovdqa %%zmm19, (%%rdx);"          // copy xmm3 to *dst
+      "lhsless%=:;"                               // lhs less branch
+      "kmovw %%k2, %%k1;"                         // copy k2 to k1
+      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k1%};"  // OR/combine lowest two int32s into zmm18
+      "kmovw %%k3, %%k1;"                         // copy k3 to k1
+      "vpsrlvq %%zmm27, %%zmm16, %%zmm16%{%%k1%};"// right shift off two quad words in ymm16
+      "dec %%r8b;"                                // lhscount -= 1 
+      "jmp bottomloop1%=;"                        // see if more work
+      
+      "rhsless%=:;"                               // rhs branch
+      "kmovw %%k2, %%k1;"                         // copy k2 to k1
+      "vpord %%zmm17, %%zmm18, %%zmm18%{%%k1%};"  // OR/combine lowest two int32s into zmm18
+      "kmovw %%k3, %%k1;"                         // copy k3 to k1
+      "vpsrlvq %%zmm27, %%zmm17, %%zmm17%{%%k1%};"// right shift off two quad words in ymm16
+      "dec %%r9b;"                                // rhscount -= 1 
+      
+      "bottomloop1%=:;"                           // book keeping on counts/dst
+      "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
+      "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r10b;"                           // move GT bit over one bit
+      "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
+      "setg %%r11b;"                              // set r11b to hold GT flag from cmp 
+      "or %%r11b, %%r10b;"                        // OR GT bits together
+      "cmp $3, %%r10b;"                           // is r10b 3 e.g. lhs & rhs count > 0?
+      "je loop1%=;"                               // if yes, more loop1 work
       :
       : "m"(lhs),
-        "m"(rhs),
-        "m"(dst)
-      :
-  );
-}
-
-
-inline
-void merge4_zmm20(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-  asm("mov %0, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm16;"
-      "mov %1, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm17;"
-      "vmovq %%zmm16, %%r8;"               // lhs[0]
-      "psrldq $8, %%zmm16;"
-      "vmovq %%zmm16, %%r9;"               // lhs[1]
-      "vmovq %%zmm17, %%r10;"              // rhs[0]
-      "psrldq $8, %%zmm17;"
-      "vmovq %%zmm17, %%r11;"              // rhs[1]
-
-      "branch1%=:;"                       // branch 1
-      "cmp %%r10d, %%r8d;"                // cmp lhs[0], rhs[0]
-      "jge branch4%=;"
-      "vmovq %%r8, %%zmm20;"               // store lhs[0]
-
-      "branch2%=:;"                       // branch 2
-      "cmp %%r10d, %%r9d;"                // cmp lhs[1], rhs[0]
-      "jge branch3%=;"
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-      "vmovq %%r10, %%zmm20;"              // store rhs[0]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "branch3%=:;"                       // branch 3
-      "vmovq %%r10, %%zmm18;"              // store rhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-
-      "cmp %%r11d, %%r9d;"                // cmp lhs[1], rhs[1]
-      "jge endbranch3%=;"
-      "vmovq %%r9, %%zmm20;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "endbranch3%=:;"                    // branch 3 else part
-      "vmovq %%r11, %%zmm20;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "branch4%=:;"                       // branch 4
-      "vmovq %%r10, %%zmm20;"              // store rhs[0]
-      "cmp %%r11d, %%r8d;"                // compare lhs[0], rhs[1]
-      "jge endbranch4%=;"
-      "vmovq %%r8, %%zmm18;"               // store lhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-
-      "branch5%=:;"                       // branch 5
-      "cmp %%r11d, %%r9d;"                // compare lhs[1], rhs[1]
-      "jge endbranch5%=;"
-      "vmovq %%r9, %%zmm20;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+3 in 3
-
-      "endbranch5%=:;"                    // else part of branch 5
-      "vmovq %%r11, %%zmm20;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "endbranch4%=:;"                    // else part of branch 4
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+2 in 2
-      "vmovq %%r8, %%zmm20;"               // store lhs[0]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm20, %%zmm20;"      // combine 4+3 in 3
-
-      "done%=:;"                          // store sorted data
-      "mov %2, %%rdx;"                    // dst
-      "vmovdqa %%zmm20, (%%rdx);"          // copy xmm2 to *dst
-      "add $16, %%rdx;"                   // advance 16 bytes
-      "vmovdqa %%zmm20, (%%rdx);"          // copy xmm3 to *dst
-      :
-      : "m"(lhs),
-        "m"(rhs),
-        "m"(dst)
-      :
-  );
-}
-
-
-inline
-void merge4_zmm21(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-  asm("mov %0, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm16;"
-      "mov %1, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm17;"
-      "vmovq %%zmm16, %%r8;"               // lhs[0]
-      "psrldq $8, %%zmm16;"
-      "vmovq %%zmm16, %%r9;"               // lhs[1]
-      "vmovq %%zmm17, %%r10;"              // rhs[0]
-      "psrldq $8, %%zmm17;"
-      "vmovq %%zmm17, %%r11;"              // rhs[1]
-
-      "branch1%=:;"                       // branch 1
-      "cmp %%r10d, %%r8d;"                // cmp lhs[0], rhs[0]
-      "jge branch4%=;"
-      "vmovq %%r8, %%zmm21;"               // store lhs[0]
-
-      "branch2%=:;"                       // branch 2
-      "cmp %%r10d, %%r9d;"                // cmp lhs[1], rhs[0]
-      "jge branch3%=;"
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-      "vmovq %%r10, %%zmm21;"              // store rhs[0]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "branch3%=:;"                       // branch 3
-      "vmovq %%r10, %%zmm18;"              // store rhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-
-      "cmp %%r11d, %%r9d;"                // cmp lhs[1], rhs[1]
-      "jge endbranch3%=;"
-      "vmovq %%r9, %%zmm21;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "endbranch3%=:;"                    // branch 3 else part
-      "vmovq %%r11, %%zmm21;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "branch4%=:;"                       // branch 4
-      "vmovq %%r10, %%zmm21;"              // store rhs[0]
-      "cmp %%r11d, %%r8d;"                // compare lhs[0], rhs[1]
-      "jge endbranch4%=;"
-      "vmovq %%r8, %%zmm18;"               // store lhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-
-      "branch5%=:;"                       // branch 5
-      "cmp %%r11d, %%r9d;"                // compare lhs[1], rhs[1]
-      "jge endbranch5%=;"
-      "vmovq %%r9, %%zmm21;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+3 in 3
-
-      "endbranch5%=:;"                    // else part of branch 5
-      "vmovq %%r11, %%zmm21;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "endbranch4%=:;"                    // else part of branch 4
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+2 in 2
-      "vmovq %%r8, %%zmm21;"               // store lhs[0]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm21, %%zmm21;"      // combine 4+3 in 3
-
-      "done%=:;"                          // store sorted data
-      "mov %2, %%rdx;"                    // dst
-      "vmovdqa %%zmm21, (%%rdx);"          // copy xmm2 to *dst
-      "add $16, %%rdx;"                   // advance 16 bytes
-      "vmovdqa %%zmm21, (%%rdx);"          // copy xmm3 to *dst
-      :
-      : "m"(lhs),
-        "m"(rhs),
-        "m"(dst)
-      :
-  );
-}
-
-
-inline
-void merge4_zmm22(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-  asm("mov %0, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm16;"
-      "mov %1, %%rdx;"
-      "vmovdqa (%%rdx), %%zmm17;"
-      "vmovq %%zmm16, %%r8;"               // lhs[0]
-      "psrldq $8, %%zmm16;"
-      "vmovq %%zmm16, %%r9;"               // lhs[1]
-      "vmovq %%zmm17, %%r10;"              // rhs[0]
-      "psrldq $8, %%zmm17;"
-      "vmovq %%zmm17, %%r11;"              // rhs[1]
-
-      "branch1%=:;"                       // branch 1
-      "cmp %%r10d, %%r8d;"                // cmp lhs[0], rhs[0]
-      "jge branch4%=;"
-      "vmovq %%r8, %%zmm22;"               // store lhs[0]
-
-      "branch2%=:;"                       // branch 2
-      "cmp %%r10d, %%r9d;"                // cmp lhs[1], rhs[0]
-      "jge branch3%=;"
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-      "vmovq %%r10, %%zmm22;"              // store rhs[0]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "branch3%=:;"                       // branch 3
-      "vmovq %%r10, %%zmm18;"              // store rhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-
-      "cmp %%r11d, %%r9d;"                // cmp lhs[1], rhs[1]
-      "jge endbranch3%=;"
-      "vmovq %%r9, %%zmm22;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "endbranch3%=:;"                    // branch 3 else part
-      "vmovq %%r11, %%zmm22;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-      "jmp done%=;"                       // all done!
-
-      "branch4%=:;"                       // branch 4
-      "vmovq %%r10, %%zmm22;"              // store rhs[0]
-      "cmp %%r11d, %%r8d;"                // compare lhs[0], rhs[1]
-      "jge endbranch4%=;"
-      "vmovq %%r8, %%zmm18;"               // store lhs[0]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-
-      "branch5%=:;"                       // branch 5
-      "cmp %%r11d, %%r9d;"                // compare lhs[1], rhs[1]
-      "jge endbranch5%=;"
-      "vmovq %%r9, %%zmm22;"               // store lhs[1]
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+3 in 3
-
-      "endbranch5%=:;"                    // else part of branch 5
-      "vmovq %%r11, %%zmm22;"              // store rhs[1]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+3 in 3
-      "jmp done%=;"                       // all done!
-
-      "endbranch4%=:;"                    // else part of branch 4
-      "vmovq %%r11, %%zmm18;"              // store rhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+2 in 2
-      "vmovq %%r8, %%zmm22;"               // store lhs[0]
-      "vmovq %%r9, %%zmm18;"               // store lhs[1]
-      "pslldq $8, %%zmm18;"
-      "vpor %%zmm18, %%zmm22, %%zmm22;"      // combine 4+3 in 3
-
-      "done%=:;"                          // store sorted data
-      "mov %2, %%rdx;"                    // dst
-      "vmovdqa %%zmm22, (%%rdx);"          // copy xmm2 to *dst
-      "add $16, %%rdx;"                   // advance 16 bytes
-      "vmovdqa %%zmm22, (%%rdx);"          // copy xmm3 to *dst
-      :
-      : "m"(lhs),
-        "m"(rhs),
-        "m"(dst)
+        "m"(rhs)
       :
   );
 }
 
 void sort() {
   // merge d0,d1 output 4 elems
-  // merge(CAP, data0+0, data0+8,   data1);
+  merge4_zmm19(data0+0, data0+8,   data1);
   // merge d2,d3 output 4 elems
-  // merge(CAP, data0+16, data0+24, data1+(CAP<<1));
+  merge4_zmm19(data0+16, data0+24, data1+(CAP<<1));
   // merge d4,d5 output 4 elems
-  // merge(CAP, data0+32, data0+40, data1+(CAP<<2));
+  merge4_zmm19(data0+32, data0+40, data1+(CAP<<2));
   // merge d5,d6 output 4 elems
-  // merge(CAP, data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));
+  merge4_zmm19(data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));
 
   // merge d0d1,d2d3 output 8 elems
   // merge(CAP<<1, data1, data1+(CAP<<1), data0);
