@@ -20,11 +20,25 @@ alignas(64)
 u_int64_t data0[64];
 alignas(64)
 u_int64_t data1[64];
+
+alignas(64)
+u_int64_t rrot[8]={7,0,1,2,3,4,5,6}; // right rotate by one uint64
+u_int64_t *rrotPtr(rrot+0);
+alignas(64)
+u_int64_t lrot[8]={1,2,3,4,5,6,7,0}; // left rotate by one uint64
+u_int64_t *lrotPtr(lrot+0);
+
 u_int64_t sorts=0;
 
 inline
 void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 // ms5.cpp:27: Error: operand type mismatch for `vmovq'
+
+// 0 1 2 3   4 5 6 7 idx
+// -----------------
+// a b c d   e f g h val
+// -----------------
+// 1 2 3 4   5 6 7  
 
 // zmm16, zmm17
 // ======================================                                                                                
@@ -40,6 +54,10 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "vmovdqa64 (%%r8), %%zmm16;"                // load *lhs
       "mov %1, %%r8;"                             // load rhs addr
       "vmovdqa64 (%%r8), %%zmm17;"                // load *rhs
+      "mov %2, %%r8;"                             // load right rotate addr
+      "vmovdqa64 (%%r8), %%zmm30;"                // load *rrot
+      "mov %3, %%r8;"                             // load left rotate addr
+      "vmovdqa64 (%%r8), %%zmm31;"                // load *lrol
       "mov $3, %%r8d;"                            // mov 3 into r8d - OR mask bottom two int32s
       "kmovw %%r8d, %%k2;"                        // set k2 to 3
       "mov $2, %%r8;"                             // lhs count
@@ -48,21 +66,23 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $5,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "vpcmpd $1,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
       "je rhsless%=;"                             // rhs less (otherwise lhs less)
 
       "lhsless%=:;"                               // lhs less branch
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
       "vpord %%zmm16, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
-      "vpsrldq $8, %%zmm16, %%zmm16;"             // discard one 64-bit word in ymm16
+      "vpermq %%zmm16, %%zmm31, %%zmm16;"         // left rotate by uint64
       "dec %%r8b;"                                // lhscount -= 1 
       "jmp bottomloop1%=;"                        // see if more work
       
       "rhsless%=:;"                               // rhs branch
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
       "vpord %%zmm17, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
-      "vpsrldq $8, %%zmm17, %%zmm17;"             // discard one 64-bit word in ymm16
+      "vpermq %%zmm17, %%zmm31, %%zmm17;"         // left rotate by uint64
       "dec %%r9b;"                                // rhscount -= 1 
       
       "bottomloop1%=:;"                           // book keeping on counts/dst
@@ -76,7 +96,9 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "je loop1%=;"                               // if yes, more loop1 work
       :
       : "m"(lhs),
-        "m"(rhs)
+        "m"(rhs),
+        "m"(rrotPtr),
+        "m"(lrotPtr)
       :
   );
 }
