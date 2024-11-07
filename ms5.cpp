@@ -26,7 +26,7 @@ inline
 void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 // ms5.cpp:27: Error: operand type mismatch for `vmovq'
 
-// zmm16, zmm17, zmm27
+// zmm16, zmm17
 // ======================================                                                                                
 // 2+2 -> 4 zmm19                                                                                                        
 // 2+2 -> 4 zmm20                                                                                                        
@@ -40,48 +40,39 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "vmovdqa64 (%%r8), %%zmm16;"                // load *lhs
       "mov %1, %%r8;"                             // load rhs addr
       "vmovdqa64 (%%r8), %%zmm17;"                // load *rhs
-      "mov $1, %%r8;"                             // mov 1 into r8
-      "vpbroadcastq %%r8, %%zmm27;"               // set qwords in zmm27 all 1
       "mov $3, %%r8d;"                            // mov 3 into r8d - OR mask bottom two int32s
       "kmovw %%r8d, %%k2;"                        // set k2 to 3
-      "mov $255, %%r8d;"                          // mov 255 to r8d - shift right write mask
-      "kmovw %%r8d, %%k3;"                        // set k3 to 255
-      "mov $2, %%r8b;"                            // load lhs count
-      "mov $2, %%r9b;"                            // load rhs count
-      "xor %%r9, %%r9;"                           // zero r9 holding dst count
+      "mov $2, %%r8;"                             // lhs count
+      "mov $2, %%r9;"                             // rhs count
       "vpxorq %%zmm18, %%zmm18, %%zmm18;"         // zero zmm18 (merge result goes here)
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $5,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) < zmm16 (lhs)?
+      "vpcmpd $5,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
       "je rhsless%=;"                             // rhs less (otherwise lhs less)
 
       "lhsless%=:;"                               // lhs less branch
-      "kmovw %%k2, %%k1;"                         // copy k2 to k1
-      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k1%};"  // OR/combine lowest two int32s into zmm18
-      "kmovw %%k3, %%k1;"                         // copy k3 to k1
-      "vpsrlvq %%zmm27, %%zmm16, %%zmm16%{%%k1%};"// right shift off two quad words in ymm16
+      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpsrldq $8, %%zmm16, %%zmm16;"             // discard one 64-bit word in ymm16
       "dec %%r8b;"                                // lhscount -= 1 
       "jmp bottomloop1%=;"                        // see if more work
       
       "rhsless%=:;"                               // rhs branch
-      "kmovw %%k2, %%k1;"                         // copy k2 to k1
-      "vpord %%zmm17, %%zmm18, %%zmm18%{%%k1%};"  // OR/combine lowest two int32s into zmm18
-      "kmovw %%k3, %%k1;"                         // copy k3 to k1
-      "vpsrlvq %%zmm27, %%zmm17, %%zmm17%{%%k1%};"// right shift off two quad words in ymm16
+      "vpord %%zmm17, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpsrldq $8, %%zmm17, %%zmm17;"             // discard one 64-bit word in ymm16
       "dec %%r9b;"                                // rhscount -= 1 
       
       "bottomloop1%=:;"                           // book keeping on counts/dst
       "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
       "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
-      "shl $1, %%r10b;"                           // move GT bit over one bit
       "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
-      "setg %%r11b;"                              // set r11b to hold GT flag from cmp 
-      "or %%r11b, %%r10b;"                        // OR GT bits together
-      "cmp $3, %%r10b;"                           // is r10b 3 e.g. lhs & rhs count > 0?
+      "setg %%r11b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r11b;"                           // move GT flag over one bit
+      "or %%r11b, %%r10b;"                        // combine GT flags
+      "cmp $3, %%r10b;"                           // is r10b 3?
       "je loop1%=;"                               // if yes, more loop1 work
       :
       : "m"(lhs),
