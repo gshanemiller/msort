@@ -4,12 +4,12 @@
 
 const int CAP = 2;
 
-u_int64_t d0[4] = {2,4,5,7};
-u_int64_t d1[4] = {0,3,6,9};
-u_int64_t d2[4] = {1,2,3,4};
+u_int64_t d0[4] = {7,5,4,2};
+u_int64_t d1[4] = {9,6,3,0};
+u_int64_t d2[4] = {4,3,2,1};
 u_int64_t d3[4] = {0,0,0,0};
 u_int64_t d4[4] = {10,10,10,10};
-u_int64_t d5[4] = {9,9,10,10};
+u_int64_t d5[4] = {9,9,9,9};
 u_int64_t d6[4] = {1,1,1,1};
 u_int64_t d7[4] = {3,3,3,3};
 
@@ -66,7 +66,7 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $1,%%zmm17, %%zmm16, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "vpcmpd $1,%%zmm16, %%zmm17, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
@@ -94,6 +94,25 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "or %%r11b, %%r10b;"                        // combine GT flags
       "cmp $3, %%r10b;"                           // is r10b 3?
       "je loop1%=;"                               // if yes, more loop1 work
+      "cmp $0, %%r8b;"                            // was lhs count 0?
+      "je rhstailloop%=;"                         // do rhs work
+
+      "lhstailloop%=:;"                           // lhs tail work
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm16, %%zmm31, %%zmm16;"         // left rotate by uint64
+      "sub $1, %%r8b;"                            // lhscount -= 1 
+      "jnz lhstailloop%=;"                        // do more lhs tail work
+      "jmp done%=;"                               // all done
+
+      "rhstailloop%=:;"                           // rhs tail work
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm17, %%zmm18, %%zmm17%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm17, %%zmm31, %%zmm17;"         // left rotate by uint64
+      "sub $1, %%r9b;"                            // lhscount -= 1 
+      "jnz rhstailloop%=;"                        // do more rhs tail work
+      
+      "done%=:;"                                  // all done
       :
       : "m"(lhs),
         "m"(rhs),
