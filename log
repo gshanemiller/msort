@@ -1,5 +1,5 @@
 Wed Nov  6 00:55:14 UTC 2024 (run on EQNX m3-large linux_perf off)
-commit 154aebcdd83041aa5cf529622c4d7f91cfc98724
+commit 154aebcdd83041aa5cf529622c4d7f91cfc98724 (ms4 at least has a bug)
 ===============================
 ms1
 ===============================
@@ -68,7 +68,7 @@ final: cap 2 sorts 16777216 51 nsPerSort 19.534897 million sorts/sec
 
 
 Tue Nov  5 20:21:42 EST 2024 (run on mac linux_perf off)
-commit abe78e852fcf4c6147c77f5962c1c4ff022d4f82
+commit abe78e852fcf4c6147c77f5962c1c4ff022d4f82 (includes ms4.cpp fix)
 ===============================
 ms1
 ===============================
@@ -121,3 +121,74 @@ final: cap 2 sorts 16777216 60 nsPerSort 16.797576 million sorts/sec
 ms5 (avx512 not supported)
 ===============================
 (no data)
+
+
+Fri Nov  8 22:48:24 UTC 2024
+commit e084a1022f6373a16558ccfd6e97460a11a4b68b (includes ms4.cpp fix)
+===============================
+ms1
+===============================
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.330035 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.305979 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.732147 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.895884 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.753305 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.927116 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.625896 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.739340 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.777446 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.962773 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.764673 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.943904 million sorts/sec
+raw  : cap 2 sorts 16777216 68 nsPerSort 14.666559 million sorts/sec
+final: cap 2 sorts 16777216 56 nsPerSort 17.799194 million sorts/sec
+ms3
+===============================
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.333766 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.311420 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.331364 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.307916 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.341477 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.322669 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.339035 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.319106 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.310732 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.277833 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.340536 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.321296 million sorts/sec
+raw  : cap 2 sorts 16777216 70 nsPerSort 14.319908 million sorts/sec
+final: cap 2 sorts 16777216 58 nsPerSort 17.291210 million sorts/sec
+ms4
+===============================
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.145424 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 20.025210 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.149631 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 20.031682 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.077491 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 19.920810 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.118196 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 19.983342 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.146461 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 20.026805 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.133753 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 20.007260 million sorts/sec
+raw  : cap 2 sorts 16777216 62 nsPerSort 16.153863 million sorts/sec
+final: cap 2 sorts 16777216 50 nsPerSort 20.038194 million sorts/sec
+ms5
+===============================
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.133134 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.590096 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.198881 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.682830 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.156231 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.622654 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.198755 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.682653 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.161652 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.630298 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.195654 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.678276 million sorts/sec
+raw  : cap 2 sorts 16777216 76 nsPerSort 13.164667 million sorts/sec
+final: cap 2 sorts 16777216 64 nsPerSort 15.634551 million sorts/sec
+
+
