@@ -27,20 +27,13 @@ u_int64_t *rrotPtr(rrot+0);
 alignas(64)
 u_int64_t lrot[8]={1,2,3,4,5,6,7,0}; // left rotate by one uint64
 u_int64_t *lrotPtr(lrot+0);
+alignas(64)
+u_int64_t ident[8]={0,1,2,3,4,5,6,7}; // identity permuation
+u_int64_t *identPtr(lrot+0);
 
 u_int64_t sorts=0;
 
-inline
-void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-// ms5.cpp:27: Error: operand type mismatch for `vmovq'
-
-// 0 1 2 3   4 5 6 7 idx
-// -----------------
-// a b c d   e f g h val
-// -----------------
-// 1 2 3 4   5 6 7  
-
-// zmm16, zmm17
+// zmm16, zmm17, zmm30, zmm31
 // ======================================                                                                                
 // 2+2 -> 4 zmm19                                                                                                        
 // 2+2 -> 4 zmm20                                                                                                        
@@ -50,16 +43,27 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 // 4+4 -> 8 zmm19+zmm20 -> zmm23                                                                                         
 // 4+4 -> 8 zmm21+zmm22 -> zmm24                                                                                         
 // 8+8 -> 16 zmm23+zmm24 -> zmm25+zmm26  
+
+void simd_init() {
+  asm("mov %0, %%r8;"                             // load right rotate addr
+      "vmovdqa64 (%%r8), %%zmm30;"                // load *rrot
+      "mov %1, %%r8;"                             // load left rotate addr
+      "vmovdqa64 (%%r8), %%zmm31;"                // load *lrol
+      "mov $3, %%r8d;"                            // mov 3 into r8d - OR mask bottom two int32s
+      "kmovw %%r8d, %%k2;"                        // set k2 to 3
+      :
+      :
+        "m"(rrotPtr),
+        "m"(lrotPtr)
+      :
+  );
+}
+
+void merge4_zmm18(u_int64_t *lhs, u_int64_t *rhs) {
   asm("mov %0, %%r8;"                             // load lhs addr
       "vmovdqa64 (%%r8), %%zmm16;"                // load *lhs
       "mov %1, %%r8;"                             // load rhs addr
       "vmovdqa64 (%%r8), %%zmm17;"                // load *rhs
-      "mov %2, %%r8;"                             // load right rotate addr
-      "vmovdqa64 (%%r8), %%zmm30;"                // load *rrot
-      "mov %3, %%r8;"                             // load left rotate addr
-      "vmovdqa64 (%%r8), %%zmm31;"                // load *lrol
-      "mov $3, %%r8d;"                            // mov 3 into r8d - OR mask bottom two int32s
-      "kmovw %%r8d, %%k2;"                        // set k2 to 3
       "mov $2, %%r8;"                             // lhs count
       "mov $2, %%r9;"                             // rhs count
       "vpxorq %%zmm18, %%zmm18, %%zmm18;"         // zero zmm18 (merge result goes here)
@@ -115,22 +119,25 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
       "done%=:;"                                  // all done
       :
       : "m"(lhs),
-        "m"(rhs),
-        "m"(rrotPtr),
-        "m"(lrotPtr)
+        "m"(rhs)
       :
   );
 }
 
 void sort() {
+  simd_init();
   // merge d0,d1 output 4 elems
-  merge4_zmm19(data0+0, data0+8,   data1);
+  merge4_zmm18(data0+0, data0+8);
+  asm("vmovdqa64 %%zmm18, %%zmm19;" :::);
   // merge d2,d3 output 4 elems
-  merge4_zmm19(data0+16, data0+24, data1+(CAP<<1));
+  merge4_zmm18(data0+16, data0+24);
+  asm("vmovdqa64 %%zmm18, %%zmm20;" :::);
   // merge d4,d5 output 4 elems
-  merge4_zmm19(data0+32, data0+40, data1+(CAP<<2));
+  merge4_zmm18(data0+32, data0+40);
+  asm("vmovdqa64 %%zmm18, %%zmm21;" :::);
   // merge d5,d6 output 4 elems
-  merge4_zmm19(data0+48, data0+56, data1+(CAP<<1)+(CAP<<2));
+  merge4_zmm18(data0+48, data0+56);
+  asm("vmovdqa64 %%zmm18, %%zmm22;" :::);
 
   // merge d0d1,d2d3 output 8 elems
   // merge(CAP<<1, data1, data1+(CAP<<1), data0);
