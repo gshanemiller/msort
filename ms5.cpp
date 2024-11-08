@@ -108,7 +108,7 @@ void merge4_zmm18(u_int64_t *lhs, u_int64_t *rhs) {
 
       "rhstailloop%=:;"                           // rhs tail work
       "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
-      "vpord %%zmm17, %%zmm18, %%zmm17%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpord %%zmm17, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
       "vpermq %%zmm17, %%zmm31, %%zmm17;"         // left rotate by uint64
       "sub $1, %%r9b;"                            // lhscount -= 1 
       "jnz rhstailloop%=;"                        // do more rhs tail work
@@ -169,7 +169,7 @@ void merge8_zmm19_20() {
 
       "rhstailloop%=:;"                           // rhs tail work
       "vpermq %%zmm23, %%zmm30, %%zmm23;"         // right rotate by uint64
-      "vpord %%zmm20, %%zmm23, %%zmm20%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpord %%zmm20, %%zmm23, %%zmm23%{%%k2%};"  // OR/combine lowest two int32s into zmm18
       "vpermq %%zmm20, %%zmm31, %%zmm20;"         // left rotate by uint64
       "sub $1, %%r9b;"                            // lhscount -= 1 
       "jnz rhstailloop%=;"                        // do more rhs tail work
@@ -229,7 +229,7 @@ void merge8_zmm21_22() {
 
       "rhstailloop%=:;"                           // rhs tail work
       "vpermq %%zmm24, %%zmm30, %%zmm24;"         // right rotate by uint64
-      "vpord %%zmm22, %%zmm24, %%zmm22%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpord %%zmm22, %%zmm24, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
       "vpermq %%zmm22, %%zmm31, %%zmm22;"         // left rotate by uint64
       "sub $1, %%r9b;"                            // lhscount -= 1 
       "jnz rhstailloop%=;"                        // do more rhs tail work
@@ -306,7 +306,7 @@ void merge16() {
 
       "rhstailloop%=:;"                           // rhs tail work
       "vpermq %%zmm25, %%zmm30, %%zmm25;"         // right rotate by uint64
-      "vpord %%zmm24, %%zmm25, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpord %%zmm24, %%zmm25, %%zmm25%{%%k2%};"  // OR/combine lowest two int32s into zmm18
       "vpermq %%zmm24, %%zmm31, %%zmm24;"         // left rotate by uint64
 
       "rhstailloop1%=:;"                          // cont rhs tail work
