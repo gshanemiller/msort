@@ -56,6 +56,20 @@ void simd_init() {
   );
 }
 
+void simd_write() {
+  u_int64_t *lhalf = data1+0;
+  u_int64_t *uhalf = lhalf+8;
+  asm("mov %0, %%r8;"
+      "vmovdqa64 %%zmm25, (%%r8);"
+      "mov %1, %%r8;"
+      "vmovdqa64 %%zmm26, (%%r8);"
+      :
+      : "m"(lhalf),
+        "m"(uhalf)
+      :
+  );
+}
+
 void merge4_zmm18(u_int64_t *lhs, u_int64_t *rhs) {
   asm("mov %0, %%r8;"                             // load lhs addr
       "vmovdqa64 (%%r8), %%zmm16;"                // load *lhs
@@ -244,7 +258,7 @@ void merge8_zmm21_22() {
 void merge16() {
   asm("mov $8, %%r8;"                             // lhs count
       "mov $8, %%r9;"                             // rhs count
-      "mov $0, %%r11;"                            // dst count
+      "mov $0, %%r12;"                            // dst count
       "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // zero zmm25 (merge result goes here)
 
       "loop1%=:;"                                 // loop 1
@@ -269,8 +283,8 @@ void merge16() {
       "dec %%r9b;"                                // rhscount -= 1 
       
       "bottomloop1%=:;"                           // book keeping on counts/dst
-      "inc %%r11;"                                // dst count += 1
-      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "inc %%r12;"                                // dst count += 1
+      "cmp $8, %%r12;"                            // is it 8? if yes, zmm25 full
       "jne bottomloop2%=;"                        // not full
       "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
       "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
@@ -293,8 +307,8 @@ void merge16() {
       "vpermq %%zmm23, %%zmm31, %%zmm23;"         // left rotate by uint64
 
       "lhstailloop1%=:;"                          // cont lhs tail work
-      "inc %%r11;"                                // dst count += 1
-      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "inc %%r12;"                                // dst count += 1
+      "cmp $8, %%r12;"                            // is it 8? if yes, zmm25 full
       "jne lhstailloop2%=;"                       // not full
       "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
       "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
@@ -310,8 +324,8 @@ void merge16() {
       "vpermq %%zmm24, %%zmm31, %%zmm24;"         // left rotate by uint64
 
       "rhstailloop1%=:;"                          // cont rhs tail work
-      "inc %%r11;"                                // dst count += 1
-      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "inc %%r12;"                                // dst count += 1
+      "cmp $8, %%r12;"                            // is it 8? if yes, zmm25 full
       "jne rhstailloop2%=;"                       // not full
       "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
       "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
@@ -327,7 +341,9 @@ void merge16() {
   );
 }
 void sort() {
+  // setup sort consts
   simd_init();
+
   // merge d0,d1 output 4 elems into zmm18
   merge4_zmm18(data0+0, data0+8);
   asm("vmovdqa64 %%zmm18, %%zmm19;" :::);
@@ -348,6 +364,9 @@ void sort() {
 
   // merge zmm23,24 output 16 elems into zmm25,zmm26
   merge16();
+
+  // write sort results to memory
+  simd_write();
 
 #ifndef NDEBUG
   printf("Sorted:\n");
