@@ -124,28 +124,233 @@ void merge4_zmm18(u_int64_t *lhs, u_int64_t *rhs) {
   );
 }
 
+void merge8_zmm19_20() {
+  asm("mov $4, %%r8;"                             // lhs count
+      "mov $4, %%r9;"                             // rhs count
+      "vpxorq %%zmm23, %%zmm23, %%zmm23;"         // zero zmm18 (merge result goes here)
+
+      "loop1%=:;"                                 // loop 1
+
+      "vpcmpd $5,%%zmm19, %%zmm20, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
+      "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
+      "cmp $1, %%r10d;"                           // is rb10==1?
+      "je rhsless%=;"                             // rhs less (otherwise lhs less)
+
+      "lhsless%=:;"                               // lhs less branch
+      "vpermq %%zmm23, %%zmm30, %%zmm23;"         // right rotate by uint64
+      "vpord %%zmm19, %%zmm23, %%zmm23%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm19, %%zmm31, %%zmm19;"         // left rotate by uint64
+      "dec %%r8b;"                                // lhscount -= 1 
+      "jmp bottomloop1%=;"                        // see if more work
+      
+      "rhsless%=:;"                               // rhs branch
+      "vpermq %%zmm23, %%zmm30, %%zmm23;"         // right rotate by uint64
+      "vpord %%zmm20, %%zmm23, %%zmm23%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm20, %%zmm31, %%zmm20;"         // left rotate by uint64
+      "dec %%r9b;"                                // rhscount -= 1 
+      
+      "bottomloop1%=:;"                           // book keeping on counts/dst
+      "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
+      "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
+      "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
+      "setg %%r11b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r11b;"                           // move GT flag over one bit
+      "or %%r11b, %%r10b;"                        // combine GT flags
+      "cmp $3, %%r10b;"                           // is r10b 3?
+      "je loop1%=;"                               // if yes, more loop1 work
+      "cmp $0, %%r8b;"                            // was lhs count 0?
+      "je rhstailloop%=;"                         // do rhs work
+
+      "lhstailloop%=:;"                           // lhs tail work
+      "vpermq %%zmm23, %%zmm30, %%zmm23;"         // right rotate by uint64
+      "vpord %%zmm19, %%zmm23, %%zmm23%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm19, %%zmm31, %%zmm19;"         // left rotate by uint64
+      "sub $1, %%r8b;"                            // lhscount -= 1 
+      "jnz lhstailloop%=;"                        // do more lhs tail work
+      "jmp done%=;"                               // all done
+
+      "rhstailloop%=:;"                           // rhs tail work
+      "vpermq %%zmm23, %%zmm30, %%zmm23;"         // right rotate by uint64
+      "vpord %%zmm20, %%zmm23, %%zmm20%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm20, %%zmm31, %%zmm20;"         // left rotate by uint64
+      "sub $1, %%r9b;"                            // lhscount -= 1 
+      "jnz rhstailloop%=;"                        // do more rhs tail work
+      
+      "done%=:;"                                  // all done
+      :
+      :
+      :
+  );
+}
+
+void merge8_zmm21_22() {
+  asm("mov $4, %%r8;"                             // lhs count
+      "mov $4, %%r9;"                             // rhs count
+      "vpxorq %%zmm24, %%zmm24, %%zmm24;"         // zero zmm18 (merge result goes here)
+
+      "loop1%=:;"                                 // loop 1
+
+      "vpcmpd $5,%%zmm21, %%zmm22, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
+      "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
+      "cmp $1, %%r10d;"                           // is rb10==1?
+      "je rhsless%=;"                             // rhs less (otherwise lhs less)
+
+      "lhsless%=:;"                               // lhs less branch
+      "vpermq %%zmm24, %%zmm30, %%zmm24;"         // right rotate by uint64
+      "vpord %%zmm21, %%zmm24, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm21, %%zmm31, %%zmm21;"         // left rotate by uint64
+      "dec %%r8b;"                                // lhscount -= 1 
+      "jmp bottomloop1%=;"                        // see if more work
+      
+      "rhsless%=:;"                               // rhs branch
+      "vpermq %%zmm24, %%zmm30, %%zmm24;"         // right rotate by uint64
+      "vpord %%zmm22, %%zmm24, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm22, %%zmm31, %%zmm22;"         // left rotate by uint64
+      "dec %%r9b;"                                // rhscount -= 1 
+      
+      "bottomloop1%=:;"                           // book keeping on counts/dst
+      "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
+      "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
+      "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
+      "setg %%r11b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r11b;"                           // move GT flag over one bit
+      "or %%r11b, %%r10b;"                        // combine GT flags
+      "cmp $3, %%r10b;"                           // is r10b 3?
+      "je loop1%=;"                               // if yes, more loop1 work
+      "cmp $0, %%r8b;"                            // was lhs count 0?
+      "je rhstailloop%=;"                         // do rhs work
+
+      "lhstailloop%=:;"                           // lhs tail work
+      "vpermq %%zmm24, %%zmm30, %%zmm24;"         // right rotate by uint64
+      "vpord %%zmm21, %%zmm24, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm21, %%zmm31, %%zmm21;"         // left rotate by uint64
+      "sub $1, %%r8b;"                            // lhscount -= 1 
+      "jnz lhstailloop%=;"                        // do more lhs tail work
+      "jmp done%=;"                               // all done
+
+      "rhstailloop%=:;"                           // rhs tail work
+      "vpermq %%zmm24, %%zmm30, %%zmm24;"         // right rotate by uint64
+      "vpord %%zmm22, %%zmm24, %%zmm22%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm22, %%zmm31, %%zmm22;"         // left rotate by uint64
+      "sub $1, %%r9b;"                            // lhscount -= 1 
+      "jnz rhstailloop%=;"                        // do more rhs tail work
+      
+      "done%=:;"                                  // all done
+      :
+      :
+      :
+  );
+}
+
+void merge16() {
+  asm("mov $8, %%r8;"                             // lhs count
+      "mov $8, %%r9;"                             // rhs count
+      "mov $0, %%r11;"                            // dst count
+      "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // zero zmm25 (merge result goes here)
+
+      "loop1%=:;"                                 // loop 1
+
+      "vpcmpd $5,%%zmm23, %%zmm24, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
+      "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
+      "cmp $1, %%r10d;"                           // is rb10==1?
+      "je rhsless%=;"                             // rhs less (otherwise lhs less)
+
+      "lhsless%=:;"                               // lhs less branch
+      "vpermq %%zmm25, %%zmm30, %%zmm25;"         // right rotate by uint64
+      "vpord %%zmm23, %%zmm25, %%zmm25%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm23, %%zmm31, %%zmm23;"         // left rotate by uint64
+      "dec %%r8b;"                                // lhscount -= 1 
+      "jmp bottomloop1%=;"                        // see if more work
+      
+      "rhsless%=:;"                               // rhs branch
+      "vpermq %%zmm25, %%zmm30, %%zmm25;"         // right rotate by uint64
+      "vpord %%zmm24, %%zmm25, %%zmm25%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm24, %%zmm31, %%zmm24;"         // left rotate by uint64
+      "dec %%r9b;"                                // rhscount -= 1 
+      
+      "bottomloop1%=:;"                           // book keeping on counts/dst
+      "inc %%r11;"                                // dst count += 1
+      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "jne bottomloop2%=;"                        // not full
+      "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
+      "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
+
+      "bottomloop2%=:;"                           // book keeping on counts/dst
+      "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
+      "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
+      "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
+      "setg %%r11b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r11b;"                           // move GT flag over one bit
+      "or %%r11b, %%r10b;"                        // combine GT flags
+      "cmp $3, %%r10b;"                           // is r10b 3?
+      "je loop1%=;"                               // if yes, more loop1 work
+      "cmp $0, %%r8b;"                            // was lhs count 0?
+      "je rhstailloop%=;"                         // do rhs work
+
+      "lhstailloop%=:;"                           // lhs tail work
+      "vpermq %%zmm25, %%zmm30, %%zmm25;"         // right rotate by uint64
+      "vpord %%zmm23, %%zmm25, %%zmm25%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm23, %%zmm31, %%zmm23;"         // left rotate by uint64
+
+      "lhstailloop1%=:;"                          // cont lhs tail work
+      "inc %%r11;"                                // dst count += 1
+      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "jne lhstailloop2%=;"                       // not full
+      "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
+      "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
+
+      "lhstailloop2%=:;"                          // cont lhs tail work
+      "sub $1, %%r8b;"                            // lhscount -= 1 
+      "jnz lhstailloop%=;"                        // do more lhs tail work
+      "jmp done%=;"                               // all done
+
+      "rhstailloop%=:;"                           // rhs tail work
+      "vpermq %%zmm25, %%zmm30, %%zmm25;"         // right rotate by uint64
+      "vpord %%zmm24, %%zmm25, %%zmm24%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm24, %%zmm31, %%zmm24;"         // left rotate by uint64
+
+      "rhstailloop1%=:;"                          // cont rhs tail work
+      "inc %%r11;"                                // dst count += 1
+      "cmp $8, %%r11;"                            // is it 8? if yes, zmm25 full
+      "jne rhstailloop2%=;"                       // not full
+      "vmovdqa64 %%zmm25, %%zmm26;"               // copy to zmm26
+      "vpxorq %%zmm25, %%zmm25, %%zmm25;"         // re-zero zmm25 (merge result goes here)
+
+      "rhstailloop2%=:;"                          // cont rhs tail work
+      "sub $1, %%r9b;"                            // rhscount -= 1 
+      "jnz rhstailloop%=;"                        // do more rhs tail work
+      
+      "done%=:;"                                  // all done
+      :
+      :
+      :
+  );
+}
 void sort() {
   simd_init();
-  // merge d0,d1 output 4 elems
+  // merge d0,d1 output 4 elems into zmm18
   merge4_zmm18(data0+0, data0+8);
   asm("vmovdqa64 %%zmm18, %%zmm19;" :::);
-  // merge d2,d3 output 4 elems
+  // merge d2,d3 output 4 elems into zmm18
   merge4_zmm18(data0+16, data0+24);
   asm("vmovdqa64 %%zmm18, %%zmm20;" :::);
-  // merge d4,d5 output 4 elems
+  // merge d4,d5 output 4 elems into zmm18
   merge4_zmm18(data0+32, data0+40);
   asm("vmovdqa64 %%zmm18, %%zmm21;" :::);
-  // merge d5,d6 output 4 elems
+  // merge d5,d6 output 4 elems into zmm18
   merge4_zmm18(data0+48, data0+56);
   asm("vmovdqa64 %%zmm18, %%zmm22;" :::);
 
-  // merge d0d1,d2d3 output 8 elems
-  // merge(CAP<<1, data1, data1+(CAP<<1), data0);
-  // merge d4d5,d6d7 outout 8 elems
-  // merge(CAP<<1, data1+(CAP<<2), data1+(CAP<<1)+(CAP<<2), data0+8);
+  // merge zmm19,20 output 8 elems into zmm23
+  merge8_zmm19_20();
+  // merge zmm21,22 output 8 elems into zmm24
+  merge8_zmm21_22();
 
-  // d0d1d2d3 + d4d5d6d7 output 16 elems
-  // mergeSimd(CAP<<2, data0, data0+8, data1);
+  // merge zmm23,24 output 16 elems into zmm25,zmm26
+  merge16();
 
 #ifndef NDEBUG
   printf("Sorted:\n");
