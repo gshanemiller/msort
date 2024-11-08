@@ -128,7 +128,7 @@ void merge8_zmm19_20() {
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $5,%%zmm19, %%zmm20, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "vpcmpd $1,%%zmm19, %%zmm20, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
@@ -188,7 +188,7 @@ void merge8_zmm21_22() {
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $5,%%zmm21, %%zmm22, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "vpcmpd $1,%%zmm21, %%zmm22, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
