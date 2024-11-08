@@ -66,7 +66,7 @@ void merge4_zmm19(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
 
       "loop1%=:;"                                 // loop 1
 
-      "vpcmpd $1,%%zmm16, %%zmm17, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "vpcmpd $5,%%zmm16, %%zmm17, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
       "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
       "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
       "cmp $1, %%r10d;"                           // is rb10==1?
