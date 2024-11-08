@@ -341,6 +341,18 @@ void merge16() {
   );
 }
 void sort() {
+  // fake in clobbers here
+  asm(""
+      :
+      :
+      : "r8",
+        "r9",
+        "r10",
+        "r11",
+        "r12",
+        "memory"
+  );
+  
   // setup sort consts
   simd_init();
 
@@ -376,7 +388,7 @@ void sort() {
       printf("%d=%u/%u ", i, (u_int32_t)data1[i], (u_int32_t)(data1[i]>>32));
     }
   }
-  printf("\n");
+  printf("\n\n");
 #endif
 }
 
@@ -435,7 +447,7 @@ void prepare(u_int64_t *d0, u_int64_t *d1, u_int64_t *d2, u_int64_t *d3,
       printf("%d=%u/%u ", i, (u_int32_t)data0[i], (u_int32_t)(data0[i]>>32));
     }
   }
-  printf("\n\n");
+  printf("\n");
 #endif
 }
 
@@ -451,6 +463,7 @@ int main() {
   for (int i5=0; i5<8; ++i5) {
   for (int i6=0; i6<8; ++i6) {
   for (int i7=0; i7<8; ++i7) {
+    // printf("%d %d %d %d      %d %d %d %d\n", i0, i1, i2, i3, i4, i5, i6, i7);
     prepare(dataIn[i0], dataIn[i1], dataIn[i2], dataIn[i3],
             dataIn[i4], dataIn[i5], dataIn[i6], dataIn[i7]);
     sort();
