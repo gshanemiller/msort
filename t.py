@@ -1,81 +1,63 @@
 #!/usr/bin/python3.12
 
-# Need 16 slots (CAP=2 * 8 threads)
-#
-# zmm16, zmm17, zmm18 sratch
-# ======================================
-# 2+2 -> 4 zmm19
-# 2+2 -> 4 zmm20
-# 2+2 -> 4 zmm21
-# 2+2 -> 4 zmm22
-#
-# 4+4 -> 8 zmm19+zmm20 -> zmm23
-# 4+4 -> 8 zmm21+zmm22 -> zmm24
-#
-# 8+8 -> 16 zmm23+zmm24 -> zmm25+zmm26
 
 CODE='''
-inline
-void merge4(u_int64_t *lhs, u_int64_t *rhs, u_int64_t *dst) {
-  asm("mov %0, %%rdx;"
-      "vmovdqa (%%rdx), %%xmm0;"
-      "vmovdqa (%%rdx), %%xmm1;"
-      "vmovq %%xmm0, %%r8;"               // lhs[0]
-      "psrldq $8, %%xmm0;"
-      "vmovq %%xmm0, %%r9;"               // lhs[1]
-      "vmovq %%xmm1, %%r10;"              // rhs[0]
-      "psrldq $8, %%xmm1;"
-      "vmovq %%xmm1, %%r11;"              // rhs[1]
-      "vmovq %%r8, %%xmm2;"               // store lhs[0]
+void merge4() {
+  asm("mov $4, %%r8;"                             // lhs count
+      "mov $4, %%r9;"                             // rhs count
+      "vpxorq %%zmm18, %%zmm18, %%zmm18;"         // zero zmm18 (merge result goes here)
 
-      "vmovq %%r9, %%xmm4;"               // store lhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
-      "vmovq %%r10, %%xmm3;"              // store rhs[0]
-      "vmovq %%r11, %%xmm4;"              // store rhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
+      "loop1%=:;"                                 // loop 1
 
-      "vmovq %%r10, %%xmm4;"              // store rhs[0]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
+      "vpcmpd $5,%%zmm16, %%zmm17, %%k1;"         // zmm17 (rhs) > zmm16 (lhs)?
+      "kmovw %%k1, %%r10d;"                       // copy k1 cmp mask to r10d
+      "and $1, %%r10d;"                           // isolate 1 bit - only care about zmm17[0]<zmm16[0] @ int32
+      "cmp $1, %%r10d;"                           // is rb10==1?
+      "je rhsless%=;"                             // rhs less (otherwise lhs less)
 
-      "vmovq %%r9, %%xmm3;"               // store lhs[1]
-      "vmovq %%r11, %%xmm4;"              // store rhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+2 in 2
+      "lhsless%=:;"                               // lhs less branch
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm16, %%zmm31, %%zmm16;"         // left rotate by uint64
+      "dec %%r8b;"                                // lhscount -= 1 
+      "jmp bottomloop1%=;"                        // see if more work
+      
+      "rhsless%=:;"                               // rhs branch
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm17, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm17, %%zmm31, %%zmm17;"         // left rotate by uint64
+      "dec %%r9b;"                                // rhscount -= 1 
+      
+      "bottomloop1%=:;"                           // book keeping on counts/dst
+      "cmp $0, %%r8b;"                            // compare lhscount r8b to 0
+      "setg %%r10b;"                              // set r10b to hold GT flag from cmp 
+      "cmp $0, %%r9b;"                            // compare rhscount r9b to 0
+      "setg %%r11b;"                              // set r10b to hold GT flag from cmp 
+      "shl $1, %%r11b;"                           // move GT flag over one bit
+      "or %%r11b, %%r10b;"                        // combine GT flags
+      "cmp $3, %%r10b;"                           // is r10b 3?
+      "je loop1%=;"                               // if yes, more loop1 work
+      "cmp $0, %%r8b;"                            // was lhs count 0?
+      "je rhstailloop%=;"                         // do rhs work
 
-      "vmovq %%r11, %%xmm3;"              // store rhs[1]
-      "vmovq %%r9, %%xmm4;"               // store lhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+2 in 2
+      "lhstailloop%=:;"                           // lhs tail work
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm16, %%zmm18, %%zmm18%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm16, %%zmm31, %%zmm16;"         // left rotate by uint64
+      "sub $1, %%r8b;"                            // lhscount -= 1 
+      "jnz lhstailloop%=;"                        // do more lhs tail work
+      "jmp done%=;"                               // all done
 
-      "vmovq %%r10, %%xmm2;"              // store rhs[0]
-      "vmovq %%r8, %%xmm4;"               // store lhs[0]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
-
-      "vmovq %%r9, %%xmm3;"               // store lhs[1]
-      "vmovq %%r11, %%xmm4;"              // store rhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
-
-      "vmovq %%r11, %%xmm3;"              // store rhs[1]
-      "vmovq %%r9, %%xmm4;"               // store lhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
-
-      "vmovq %%r11, %%xmm4;"              // store rhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm2, %%xmm2;"      // combine 4+2 in 2
-      "vmovq %%r8, %%xmm3;"               // store lhs[0]
-      "vmovq %%r9, %%xmm4;"               // store lhs[1]
-      "pslldq $8, %%xmm4;"
-      "vpor %%xmm4, %%xmm3, %%xmm3;"      // combine 4+3 in 3
+      "rhstailloop%=:;"                           // rhs tail work
+      "vpermq %%zmm18, %%zmm30, %%zmm18;"         // right rotate by uint64
+      "vpord %%zmm17, %%zmm18, %%zmm17%{%%k2%};"  // OR/combine lowest two int32s into zmm18
+      "vpermq %%zmm17, %%zmm31, %%zmm17;"         // left rotate by uint64
+      "sub $1, %%r9b;"                            // lhscount -= 1 
+      "jnz rhstailloop%=;"                        // do more rhs tail work
+      
+      "done%=:;"                                  // all done
       :
-      : "m"(lhs),
-        "m"(rhs),
-        "m"(dst)
+      :
       :
   );
 }
@@ -89,14 +71,9 @@ def replace(search, replace):
     i=i+1
   print(s)
 
-replace(["void merge4",       "%xmm0", "%xmm1", "%xmm4", "%xmm2", "%xmm3"],
-        ["void merge4_zmm19", "%zmm16","%zmm17","%zmm18","%zmm19","%zmm19"])
-
-# replace(["void merge4",       "%xmm0", "%xmm1", "%xmm4", "%xmm2", "%xmm3"],
-#         ["void merge4_zmm20", "%zmm16","%zmm17","%zmm18","%zmm20","%zmm20"])
-
-# replace(["void merge4",       "%xmm0", "%xmm1", "%xmm4", "%xmm2", "%xmm3"],
-#         ["void merge4_zmm21", "%zmm16","%zmm17","%zmm18","%zmm21","%zmm21"])
-
-# replace(["void merge4",       "%xmm0", "%xmm1", "%xmm4", "%xmm2", "%xmm3"],
-#         ["void merge4_zmm22", "%zmm16","%zmm17","%zmm18","%zmm22","%zmm22"])
+# merge 19+20 -> 23 
+replace(["void merge4",          "%zmm18", "%zmm16", "%zmm17"],
+        ["void merge8_zmm19_20", "%zmm23", "%zmm19", "%zmm20"])
+# merge 21+22 -> 24
+replace(["void merge4",          "%zmm18", "%zmm16", "%zmm17"],
+        ["void merge8_zmm21_22", "%zmm24", "%zmm21", "%zmm22"])
